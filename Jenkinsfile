@@ -22,5 +22,12 @@ pipeline {
                       } 
                  }
             }
-      }
+        stage('DOCKER DEPLOY') {
+            steps {
+                 sshagent(['tomcat-creds']) {
+                 sh "ssh ec2-user@172.31.8.114 docker run -d -p 8080:8080 --sailu hiring yennampallisailu/hiring:0.0.2"
+                 }
+             }
+         }
+     }
 }
