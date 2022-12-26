@@ -1,27 +1,25 @@
 pipeline {
     agent any
-
-    stages {
-        stage('git checkout') {
-            steps {
-               git branch: 'main', credentialsId: 'git-credentials', url: 'https://github.com/vasu-sailu/hiring' 
-            }
-        }
+ 
+    stages{
+        
         stage('maven build') {
             steps {
                sh "mvn clean package" 
             }
         }
         
-        
-        stage('tomcat deploy') {
+        stage('DOCKER BUILD') {
             steps {
-               sshagent(['tomcat-creds']) {
-                sh "scp -o StrictHostKeyChecking=no target/*.war ec2-user@172.31.7.187:/opt/tomcat9/webapps"
-                sh "ssh ec2-user@172.31.7.187 /opt/tomcat9/bin/shutdown.sh"
-                sh "ssh ec2-user@172.31.7.187 /opt/tomcat9/bin/startup.sh"
+               sh "docker build -t yennampallisailu/hiring:0.0.2 ."
             }
         }
-    }
-}
+        stage('DOCKER PUSH') {
+            steps {
+               sh "docker login -u yennampallisailu -p xxxxx"
+               sh "docker push yennampallisailu/hiring:0.0.2"
+                
+                   }
+            }
+      }
 }
