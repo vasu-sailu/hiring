@@ -1,33 +1,40 @@
 pipeline {
     agent any
- 
-    stages{
+
+    stages {
         
-        stage('maven build') {
+        stage('Maven Build') {
             steps {
-               sh "mvn clean package" 
+                sh "mvn clean package"
             }
         }
         
-        stage('DOCKER BUILD') {
+        stage('Docker Build') {
             steps {
-               sh "docker build -t yennampallisailu/hiring:0.0.2 ."
+                sh "docker build . -t kammana/hiring:${commit_id()}"
             }
         }
-        stage('DOCKER PUSH') {
+        stage('Docker Push') {
             steps {
-                 withCredentials([string(credentialsId: 'dockerhub-pwd', variable: 'hubpwd')]) {
-                     sh "docker login -u yennampallisailu -p ${hubpwd}"
-                     sh "docker push yennampallisailu/hiring:0.0.2"                   
-                      } 
-                 }
+                withCredentials([string(credentialsId: 'docker-hub', variable: 'hubPwd')]) {
+                    sh "docker login -u kammana -p ${hubPwd}"
+                    sh "docker push kammana/hiring:${commit_id()}"
+                }
             }
-        stage('DOCKER DEPLOY') {
+        }
+        stage('Docker Deploy') {
             steps {
-                 sshagent(['tomcat-creds']) {
-                 sh "ssh -o StrictHostKeyChecking=no ec2-user@172.31.8.114 docker run -d -p 8080:8080 --name sailu yennampallisailu/hiring:0.0.2"
-                 }
-             }
-         }
-     }
+                sshagent(['docker-host']) {
+                    sh "ssh -o StrictHostKeyChecking=no  ec2-user@172.31.36.37 docker rm -f hiring"
+                    sh "ssh  ec2-user@172.31.36.37 docker run -d -p 8080:8080 --name hiring kammana/hiring:${commit_id()}"
+                }
+            }
+        }
+
+    }
+}
+
+def commit_id(){
+    id = sh returnStdout: true, script: 'git rev-parse HEAD'
+    return id
 }
