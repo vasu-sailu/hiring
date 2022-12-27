@@ -2,26 +2,39 @@ pipeline {
     agent any
 
     stages {
-        stage('git checkout') {
+        
+        stage('Maven Build') {
             steps {
-               git branch: 'main', credentialsId: 'git-credentials', url: 'https://github.com/vasu-sailu/hiring' 
-            }
-        }
-        stage('maven build') {
-            steps {
-               sh "mvn clean package" 
+                sh "mvn clean package"
             }
         }
         
-        
-        stage('tomcat deploy') {
+        stage('Docker Build') {
             steps {
-               sshagent(['tomcat-creds']) {
-                sh "scp -o StrictHostKeyChecking=no target/*.war ec2-user@172.31.7.187:/opt/tomcat9/webapps"
-                sh "ssh ec2-user@172.31.7.187 /opt/tomcat9/bin/shutdown.sh"
-                sh "ssh ec2-user@172.31.7.187 /opt/tomcat9/bin/startup.sh"
+                sh "docker build . -t yennampallisailu/hiring:${commit_id()}"
             }
         }
+        stage('Docker Push') {
+            steps {
+                withCredentials([string(credentialsId: 'docker-hub', variable: 'hubPwd')]) {
+                    sh "docker login -u yennampallisailu -p ${hubPwd}"
+                    sh "docker push yennampallisailu/hiring:${commit_id()}"
+                }
+            }
+        }
+        stage('Docker Deploy') {
+            steps {
+                sshagent(['docker-host']) {
+                    sh "ssh -o StrictHostKeyChecking=no  ec2-user@172.31.8.114 docker rm -f hiring"
+                    sh "ssh  ec2-user@172.31.8.114 docker run -d -p 8080:8080 --name hiring yennampallisailu/hiring:${commit_id()}"
+                }
+            }
+        }
+
     }
 }
+
+def commit_id(){
+    id = sh returnStdout: true, script: 'git rev-parse HEAD'
+    return id
 }
