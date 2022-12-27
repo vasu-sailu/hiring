@@ -24,7 +24,7 @@ pipeline {
         }
         stage('Docker Deploy') {
             steps {
-                sshagent(['docker-host']) {
+                sshagent(['tomcat-creds']) {
                     sh "ssh -o StrictHostKeyChecking=no  ec2-user@172.31.8.114 docker rm -f hiring"
                     sh "ssh  ec2-user@172.31.8.114 docker run -d -p 8080:8080 --name hiring yennampallisailu/hiring:${commit_id()}"
                 }
